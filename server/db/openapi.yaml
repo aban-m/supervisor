@@ -1,0 +1,141 @@
+openapi: 3.1.0
+
+info:
+  title: B-Line
+  description:
+    The server-side of the B-Line orchestration service.
+  version: 1.0
+
+servers:
+  ur: /api/v1/
+
+paths:
+  /tasks:
+    get:
+      summary: Retrieve tasks
+      description: Retrieves tasks satisfying a particular pattern.
+      operationId: run.get_tasks
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/task-list"
+    post:
+      summary: Create task
+      description: Creates a new task.
+      operationId: run.create_task
+      parameters:
+        - name: name
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 4
+            maxLength: 120
+        - name: desc
+          description: "Description"
+          in: header
+        - name: data
+          description: "Initial data"
+          in: header
+  /tasks/{name}:
+    get:
+      summary: Retrieves task
+      description: Retrieves information about the specified task.
+      operationId: run.get_task
+      parameters:
+        - name: name
+          in: path
+          required: true
+      responses: 
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/task"
+        "404":
+          description: "Task not found"
+    put:
+      summary: Update data
+      operationId: run.update_data
+      description: Updates the data of the specified task.
+      parameters:
+        - name: data
+          in: header
+          required: false
+        - name: name
+          in: path
+          required: true
+      responses:
+        "201":
+          description: "OK"
+        "403":
+          description: "Forbidden: You must be the runner."
+    delete:
+      summary: Delete task
+      operationId: run.delete_task
+      description: Deletes the specified task.
+      parameters:
+        - name: name
+          in: path
+          required: true
+      responses:
+        "204":
+          description: "OK"
+        "403":
+          description: "Forbidden: You must be the creator."
+  /tasks/{name}/queue:
+    get:
+      summary: Get queue
+      operationId: run.get_queue
+      description: Retrieves the queue of the specified task.
+      parameters:
+        - name: name
+          in: path
+          required: true
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: "OK"
+    put:
+      summary: Enqueue
+      operationId: run.enqueue
+      description: Join the queue of the specified task.
+      parameters:
+        - name: name
+          in: path
+          required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      summary: Dequeue
+      operationId: run.dequeue
+      description: Leave the queue of the specified task.
+      parameters:
+        - name: name
+          in: path
+          required: true
+      responses:
+        "200":
+          description: "OK"
+        "404":
+          description: "User must be a member of the queue."
+  /useres/{name}:
+    post:
+      summary: Create user
+      description: Creates a new user.
+      responses:
+        "200":
+          description: "OK"
+        "401":
+          description: "This user already exists."
