@@ -1,141 +1,269 @@
-openapi: 3.1.0
-
+openapi: 3.0.0
 info:
-  title: B-Line
-  description:
-    The server-side of the B-Line orchestration service.
-  version: 1.0
-
-servers:
-  ur: /api/v1/
-
+  title: Task Management API
+  version: 1.0.0
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        runner:
+          type: string
+        creator:
+          type: string
+        last_update:
+          type: string
+          format: date-time
+        created_date:
+          type: string
+          format: date-time
+        queue:
+          type: array
+          items:
+            type: string
+        state:
+          type: integer
+          minimum: 0
+          maximum: 2
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        url:
+          type: string
+          format: uri
 paths:
   /tasks:
-    get:
-      summary: Retrieve tasks
-      description: Retrieves tasks satisfying a particular pattern.
-      operationId: run.get_tasks
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/task-list"
     post:
-      summary: Create task
-      description: Creates a new task.
+      summary: Create a new task
       operationId: run.create_task
       parameters:
-        - name: name
-          in: header
+        - name: id
+          in: query
           required: true
           schema:
             type: string
-            minLength: 4
-            maxLength: 120
-        - name: desc
-          description: "Description"
-          in: header
-        - name: data
-          description: "Initial data"
-          in: header
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Task created
+    get:
+      summary: Get all tasks
+      operationId: run.read_tasks
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          required: false
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          required: false
+      responses:
+        '200':
+          description: List of tasks
   /tasks/{name}:
     get:
-      summary: Retrieves task
-      description: Retrieves information about the specified task.
-      operationId: run.get_task
+      summary: Get information about a task
+      operationId: run.read_task
       parameters:
         - name: name
           in: path
           required: true
-      responses: 
-        "200":
-          description: "OK"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task information
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/task"
-        "404":
-          description: "Task not found"
+                $ref: '#/components/schemas/Task'
     put:
-      summary: Update data
-      operationId: run.update_data
-      description: Updates the data of the specified task.
+      summary: Update data of a task
+      operationId: run.update_task
       parameters:
-        - name: data
-          in: header
-          required: false
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
         - name: name
           in: path
           required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
       responses:
-        "201":
-          description: "OK"
-        "403":
-          description: "Forbidden: You must be the runner."
+        '200':
+          description: Task updated
     delete:
-      summary: Delete task
+      summary: Delete a task
       operationId: run.delete_task
-      description: Deletes the specified task.
       parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
         - name: name
           in: path
           required: true
+          schema:
+            type: string
       responses:
-        "204":
-          description: "OK"
-        "403":
-          description: "Forbidden: You must be the creator."
+        '204':
+          description: Task deleted
   /tasks/{name}/queue:
     get:
-      summary: Get queue
-      operationId: run.get_queue
-      description: Retrieves the queue of the specified task.
+      summary: Get IDs of the queue of a task
+      operationId: run.read_queue
       parameters:
         - name: name
           in: path
           required: true
-        - name: limit
+          schema:
+            type: string
+        - name: start
           in: query
-          required: false
           schema:
             type: integer
-            minimum: 1
-            maximum: 100
+          required: false
+        - name: end
+          in: query
+          schema:
+            type: integer
+          required: false
       responses:
-        "200":
-          description: "OK"
+        '200':
+          description: Queue IDs
     put:
-      summary: Enqueue
-      operationId: run.enqueue
-      description: Join the queue of the specified task.
+      summary: Join the queue
+      operationId: run.join_queue
       parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
         - name: name
           in: path
           required: true
+          schema:
+            type: string
       responses:
-        "200":
-          description: "OK"
+        '200':
+          description: Joined queue
+        '409':
+          description: User is already in the queue
     delete:
-      summary: Dequeue
-      operationId: run.dequeue
-      description: Leave the queue of the specified task.
+      summary: Dequeue yourself from the queue
+      operationId: run.leave_queue
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Dequeued
+        '404':
+          description: User is not in the queue
+  /users/{name}:
+    post:
+      summary: Create a new user
+      operationId: run.create_user
       parameters:
         - name: name
           in: path
           required: true
+          schema:
+            type: string
+        - name: link
+          in: query
+          schema:
+            type: string
+          required: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
       responses:
-        "200":
-          description: "OK"
-        "404":
-          description: "User must be a member of the queue."
-  /useres/{name}:
-    post:
-      summary: Create user
-      description: Creates a new user.
-      responses:
-        "200":
-          description: "OK"
-        "401":
-          description: "This user already exists."
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+        '409':
+          description: User with that name already exists

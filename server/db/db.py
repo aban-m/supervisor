@@ -11,12 +11,19 @@ r = redis.Redis(host=HOST, port=PORT)
 def verify_user(id, key):
     return decode(r.hget('users', id)) == key
 
-def register_user(id):
+def register_user(id, link=''):
     if r.hexists('users', id):
         raise DuplicationError('User already exists.')
     key = generate_key()
     r.hset('users', id, key)
+    r.set(f'users:{id}', link)
     return key
+
+def get_user_link(id):
+    link = decode(r.get(f'users:{id}'))
+    if not link: raise NotFoundError('User has not supplied link')
+    return link
+
 
 def create_task(id, name, desc='', data=''):
     entry_name = f'task:{name}'
@@ -46,7 +53,7 @@ def get_task(name):
 def task_queue(name):
     return [decode(s) for s in r.lrange(f'task:{name}:queue', 0, -1)]
 
-def task_enqueue(name, id):
+def task_enqueue(id, name):
     r.lpush(f'task:{name}:queue', id)
 
 def task_peek(name):
@@ -104,4 +111,4 @@ def validate_task_stop(id, name, strict=False):
 
 
 def validate_id(id):
-    return 3<len(id)<40and all(c in ALPHABET for c in id)
+    return 3 < len(id) < 40 and all(c in ALPHABET for c in id)
