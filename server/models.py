@@ -28,8 +28,8 @@ class User(BaseModel):
 
 
 class TasksPostRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str = ''
+    description: Optional[str] = 'No description'
 
 
 class TasksNamePutRequest(BaseModel):
