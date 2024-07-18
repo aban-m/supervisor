@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: Task Management API
-  version: 1.0.0
+  title: Supervisor Server API
+  version: "1.0"
 components:
   schemas:
     Task:
@@ -47,12 +47,12 @@ paths:
       operationId: run.create_task
       parameters:
         - name: id
-          in: query
+          in: header
           required: true
           schema:
             type: string
         - name: key
-          in: query
+          in: header
           required: true
           schema:
             type: string
@@ -115,12 +115,12 @@ paths:
       operationId: run.update_task
       parameters:
         - name: id
-          in: query
+          in: header
           required: true
           schema:
             type: string
         - name: key
-          in: query
+          in: header
           required: true
           schema:
             type: string
@@ -146,12 +146,12 @@ paths:
       operationId: run.delete_task
       parameters:
         - name: id
-          in: query
+          in: header
           required: true
           schema:
             type: string
         - name: key
-          in: query
+          in: header
           required: true
           schema:
             type: string
@@ -191,12 +191,12 @@ paths:
       operationId: run.join_queue
       parameters:
         - name: id
-          in: query
+          in: header
           required: true
           schema:
             type: string
         - name: key
-          in: query
+          in: header
           required: true
           schema:
             type: string
@@ -215,12 +215,12 @@ paths:
       operationId: run.leave_queue
       parameters:
         - name: id
-          in: query
+          in: header
           required: true
           schema:
             type: string
         - name: key
-          in: query
+          in: header
           required: true
           schema:
             type: string
@@ -249,12 +249,6 @@ paths:
           schema:
             type: string
           required: false
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
       responses:
         '200':
           description: User created
