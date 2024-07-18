@@ -1,3 +1,2 @@
 redis
-flask
-openapi[flask]
+fastapi
