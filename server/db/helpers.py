@@ -1,14 +1,16 @@
 from random import choice
-import time, datetime
+import datetime
 
 ALPHABET = ''.join(chr(i) for i in range(97, 97+26))+''.join(chr(i) for i in range(65, 65+26))+'0123456789'
 KEY_SIZE = 32
 
-class DuplicationError(Exception): pass
-class CoordinationError(Exception): pass
-class PermissionError(Exception): pass
+class LogicError(Exception): pass
+class DuplicationError(LogicError): pass
+class CoordinationError(LogicError): pass
+class PermissionError(LogicError): pass
+class NotFoundError(LogicError): pass
 
-def generate_key(size=KEY_SIZE):
+def generate_key(size=KEY_SIZE): # NOT cryptographically secure!
     return ''.join(choice(ALPHABET) for _ in range(size))
 
 
