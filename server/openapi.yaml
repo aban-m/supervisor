@@ -2,76 +2,236 @@ openapi: 3.0.0
 info:
   title: Supervisor Server API
   version: "1.0"
-components:
+  description: "The server-side of the Supervisor API"
+components: 
+
   schemas:
-    Task:
-      type: object
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        runner:
-          type: string
-        creator:
-          type: string
-        last_update:
-          type: string
-          format: date-time
-        created_date:
-          type: string
-          format: date-time
-        queue:
-          type: array
-          items:
-            type: string
-        state:
-          type: integer
-          minimum: 0
-          maximum: 2
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-        key:
-          type: string
-        url:
-          type: string
-          format: uri
+    TaskList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Task'
     Credentials:
       type: object
       properties:
         id:
           type: string
+          minimumLength: 4
+          maximumLength: 40
         key:
           type: string
+    Task:
+      type: object
+      properties:
+        name:
+          type: string
+          minimumLength: 3
+          maximumLength: 40
+        description:
+          type: string
+        status:
+          type: integer
+          minimum: 0
+          maximum: 2
+        runner:
+          type: string
+        creator:
+          type: string
+        data:
+          type: string
+        last_updated:
+          format: date-time
+        created_date:
+          type: string
+          format: date-time
+  
 paths:
-  /tasks:
+  /task/{name}/maintain:
     post:
-      summary: Create a new task
-      operationId: run.create_task
+      description: 'Keep running the task.'
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                  nullable: true
-                credentials:
-                  $ref: '#/components/schemas/Credentials'
+              $ref: '#/components/schemas/Credentials'
       responses:
         '201':
-          description: Task created
+          description: 'OK.'
+        '403':
+          description: 'User is not running the task.'
+  /task/{name}/start:
+    post:
+      description: Run the task.
+      requestBody:
+      # the credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: 'OK'
+        '403':
+          description: 'User is not next in line.'
+    
+  /user/{id}:
+    post:
+      description: Register user and return its key.
+      parameters:
+        - name: id
+          schema:
+            type: string
+          in: path
+          required: true
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                type: string
+        '409':
+          description: 'User already exists.'
     get:
-      summary: Get tasks
-      operationId: run.read_tasks
+      description: Get the link of the user.
+      parameters:
+        - name: id
+          schema:
+            type: string
+          in: path
+          required: true
+      responses:
+        '200':
+          description: 'OK'
+
+          content:
+            application/json:
+              schema:
+                type: string
+        '404':
+          description: 'User not found.'
+
+
+  /task/{name}/queue:
+    delete:
+      description: 'Leave the queue for the task.'
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: 'OK'
+          required: true
+        '404':
+          description: 'You are not in line.'
+    put:
+      description: 'Join the queue for the task.'
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: 'OK'
+          required: true
+
+          application/json:
+            schema:
+              type: integer
+              description: 'Your number in line.'
+        '409':
+          description: 'You are already in line.'
+  /task/{name}:
+    delete:
+      description: 'Delete the task.'
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: 'OK'
+        '403':
+          description: 'You are not the creator of the task.'
+    put:
+      description: Update task data
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credentials:
+                  $ref: '#/components/schemas/Credentials'
+                data:
+                  type: string
+                  nullable: true
+              
+      responses:
+        '201':
+          description: 'OK'
+
+        '403':
+          description: 'You are not the runner of the task.'
+    get:
+      description: Fetch task
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: 'Task not found'
+      
+  /task:
+    get:
+      description: Fetch tasks
       parameters:
         - name: pattern
           schema:
@@ -81,39 +241,20 @@ paths:
           schema:
             type: integer
           in: query
-        - name: offset
-          schema:
-            type: integer
-          in: query
       responses:
         '200':
-          description: List of tasks
-  /tasks/{name}:
-    get:
-      summary: Get information about a task
-      operationId: run.read_task
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Task information
+          description: 'OK'
+
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
-    put:
-      summary: Update data of a task
-      operationId: run.update_task
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+                $ref: '#/components/schemas/TaskList'
+
+    post:
+      description: Create a new task
+      responses:
+        '201':
+          description: 'OK'
       requestBody:
         required: true
         content:
@@ -121,119 +262,11 @@ paths:
             schema:
               type: object
               properties:
-                data:
-                  type: string
                 credentials:
                   $ref: '#/components/schemas/Credentials'
-      responses:
-        '200':
-          description: Task updated
-    delete:
-      summary: Delete a task
-      operationId: run.delete_task
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Credentials'
-      responses:
-        '204':
-          description: Task deleted
-  /tasks/{name}/queue:
-    get:
-      summary: Get IDs of the queue of a task
-      operationId: run.read_queue
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: start
-          in: query
-          schema:
-            type: integer
-        - name: end
-          in: query
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Queue IDs
-    put:
-      summary: Join the queue
-      operationId: run.join_queue
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Credentials'
-      responses:
-        '200':
-          description: Joined queue
-        '409':
-          description: User is already in the queue
-    delete:
-      summary: Dequeue yourself from the queue
-      operationId: run.leave_queue
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Credentials'
-      responses:
-        '204':
-          description: Dequeued
-        '404':
-          description: User is not in the queue
-  /users/{name}:
-    post:
-      summary: Create a new user
-      operationId: run.create_user
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                link:
+                name:
                   type: string
-      responses:
-        '200':
-          description: User created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  key:
-                    type: string
-        '409':
-          description: User with that name already exists
+                desc:
+                  type: string
+                  nullable: true
+      

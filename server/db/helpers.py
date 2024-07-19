@@ -16,7 +16,3 @@ def generate_key(size=KEY_SIZE): # NOT cryptographically secure!
 
 def current_time():
     return datetime.datetime.now().isoformat()
-
-def decode(s):
-    try: return s.decode('utf-8')
-    except: return s

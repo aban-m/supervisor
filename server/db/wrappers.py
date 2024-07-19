@@ -6,10 +6,12 @@ dotenv.load_dotenv()
 HOST = os.getenv('REDIS_HOST', '127.0.0.1')
 PORT = int(os.getenv('REDIS_PORT', 6379))
 
-r = redis.Redis(host=HOST, port=PORT) # for dev purposes
+r = redis.StrictRedis(host=HOST, port=PORT, 
+                      db = 0,
+                      decode_responses=True, charset='utf-8')
 
 def verify_user(id, key):
-    return key and decode(r.hget(f'user:{id}', 'key')) == key
+    return key and r.hget(f'user:{id}', 'key') == key
 
 def register_user(id, link=''):
     if r.exists(f'user:{id}'):
@@ -22,7 +24,7 @@ def delete_user(id):
     r.delete(f'user:{id}')   
 
 def get_user_link(id):
-    link = decode(r.get(f'users:{id}'))
+    link = r.get(f'users:{id}')
     if not link: raise NotFoundError('User has not supplied link')
     return link
 
@@ -47,34 +49,34 @@ def delete_task(name):
     r.delete(f'task_queue:{name}')
 
 def get_task(name):
-    d = {decode(k):decode(v) for k, v in r.hgetall(f'task:{name}').items()}
+    d = r.hgetall(f'task:{name}').items()
     if not d: return None
     d['queue'] = task_queue(name)
     return d
 
-def search_tasks(s, limit, offset):
-    names = [decode(out)[5:] for out in r.scan(offset, f'task:{s}', limit)[1]]
-    out = []
-    pipe = r.pipeline()
-    for name in names:
-        out.append(get_task(name))
-    return out
+def search_tasks(s, limit):
+    names = [out[5:] for out in r.scan(0, f'task:{s}', limit)[1]]
+    tasks = r.mget([f'task:{s}' for s in names])
+    queues = r.mget([f'task_queue:{s}' for s in names])
+    for task, queue in zip(tasks, queues):
+        task['queue'] = queue
+    return tasks
 
 def task_queue(name):
-    return [decode(s) for s in r.lrange(f'task_queue:{name}', 0, -1)]
+    return r.lrange(f'task_queue:{name}', 0, -1)
 
 def task_enqueue(id, name):
     r.lpush(f'task_queue:{name}', id)
 
 def task_peek(name):
-    try: return decode(r.lrange(f'task_queue:{name}', -1, -1)[0])
+    try: return r.lrange(f'task_queue:{name}', -1, -1)[0]
     except IndexError: return None
 
 def task_dequeue(name):
-    return decode(r.rpop(f'task_queue:{name}'))
+    return r.rpop(f'task_queue:{name}')
 
 def set_task_attr(name, key, val): r.hset(f'task:{name}', key, val)
-def get_task_attr(name, key): return decode(r.hget(f'task:{name}', key))
+def get_task_attr(name, key): return r.hget(f'task:{name}', key)
 
 def update_task_data(name, data, append=False):
     entry_name = f'task:{name}'
@@ -107,8 +109,9 @@ def validate_task_run(id, name, strict=False):
 
 def validate_task_delete(id, name, strict=False):
     state, creator = r.hmget(f'task:{name}', ['state', 'creator'])
+    if state is None: raise NotFoundError('Task not found.')
     if int(state) == 2: raise PermissionError('Task is running.')
-    if creator != 2: raise PermissionError(f'{id} is not the creator.')
+    if creator != id: raise PermissionError(f'{id} is not the creator.')
 
 def validate_task_update(id, name, strict=False):
     if id != get_task_attr(name, 'runner'): raise PermissionError(f'{id} is not the runner.')
@@ -119,6 +122,8 @@ def validate_task_update(id, name, strict=False):
 def validate_task_stop(id, name, strict=False):
     if id != get_task_attr(name, 'runner'): raise PermissionError(f'{id} is not the runner.')
 
+def validate_task_enqueue(id, name):
+    pass
 
 def validate_id(id):
     return 3 < len(id) < 40 and all(c in ALPHABET for c in id)
