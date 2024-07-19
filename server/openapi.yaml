@@ -40,22 +40,18 @@ components:
         url:
           type: string
           format: uri
+    Credentials:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
 paths:
   /tasks:
     post:
       summary: Create a new task
       operationId: run.create_task
-      parameters:
-        - name: id
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: header
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -68,28 +64,27 @@ paths:
                 description:
                   type: string
                   nullable: true
+                credentials:
+                  $ref: '#/components/schemas/Credentials'
       responses:
         '201':
           description: Task created
     get:
-      summary: Get all tasks
+      summary: Get tasks
       operationId: run.read_tasks
       parameters:
-        - name: search
-          in: query
+        - name: pattern
           schema:
             type: string
-          required: false
+          in: query
         - name: limit
-          in: query
           schema:
             type: integer
-          required: false
+          in: query
         - name: offset
-          in: query
           schema:
             type: integer
-          required: false
+          in: query
       responses:
         '200':
           description: List of tasks
@@ -114,16 +109,6 @@ paths:
       summary: Update data of a task
       operationId: run.update_task
       parameters:
-        - name: id
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: header
-          required: true
-          schema:
-            type: string
         - name: name
           in: path
           required: true
@@ -138,6 +123,8 @@ paths:
               properties:
                 data:
                   type: string
+                credentials:
+                  $ref: '#/components/schemas/Credentials'
       responses:
         '200':
           description: Task updated
@@ -145,21 +132,17 @@ paths:
       summary: Delete a task
       operationId: run.delete_task
       parameters:
-        - name: id
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: header
-          required: true
-          schema:
-            type: string
         - name: name
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
       responses:
         '204':
           description: Task deleted
@@ -177,12 +160,10 @@ paths:
           in: query
           schema:
             type: integer
-          required: false
         - name: end
           in: query
           schema:
             type: integer
-          required: false
       responses:
         '200':
           description: Queue IDs
@@ -190,21 +171,17 @@ paths:
       summary: Join the queue
       operationId: run.join_queue
       parameters:
-        - name: id
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: header
-          required: true
-          schema:
-            type: string
         - name: name
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
       responses:
         '200':
           description: Joined queue
@@ -214,21 +191,17 @@ paths:
       summary: Dequeue yourself from the queue
       operationId: run.leave_queue
       parameters:
-        - name: id
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: header
-          required: true
-          schema:
-            type: string
         - name: name
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
       responses:
         '204':
           description: Dequeued
@@ -244,11 +217,14 @@ paths:
           required: true
           schema:
             type: string
-        - name: link
-          in: query
-          schema:
-            type: string
-          required: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                link:
+                  type: string
       responses:
         '200':
           description: User created
