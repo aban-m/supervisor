@@ -1,4 +1,5 @@
 import os, dotenv
+from typing import List
 import redis
 from .helpers import *
 
@@ -39,10 +40,24 @@ def create_task(id, name, desc='', data=''):
         'data': data,
         'creator': id,
         'runner': '',
-        'state': 0,
         'last_updated': '',
         'created_date': current_time()
     })
+
+def maintain_tasks(target : str | List[str], time):
+    if isinstance(target, str):
+        r.setex(f'task_running:{target}', time, 1)
+        return
+    # do the rest in a pipe
+    pipe = r.pipeline()
+    for t in target:
+        pipe.setex(f'task_running:{t}', time, 1)
+    pipe.execute()
+def is_maintained(target : str | List[str]):
+    if isinstance(target, str): target=[target]
+    out = r.exists(*(f'task_running:{t}' for t in target))
+    if len(target) == 1: return out[0]
+    return out
 
 def delete_task(name):
     r.delete(f'task:{name}')
@@ -85,39 +100,33 @@ def update_task_data(name, data, append=False):
     r.hset(entry_name, 'data', data)
     r.hset(entry_name, 'last_updated', current_time())
 
+
 def set_task_runner(id, name):
     set_task_attr(name, 'runner', id)
-    set_task_attr(name, 'state', b'2')
 
-def stop_task(id, name):
+def stop_task(name):
     set_task_attr(name, 'runner', '')
-    set_task_attr(name, 'state', b'0' if task_peek(name) else b'1')
-
-def queue_task(name):
-    state = get_task_attr(name, 'state')
-    if state != b'2':
-        set_task_attr(name, 'state', b'1')
 
 # VALIDATION
 
 def validate_task_run(id, name, strict=False):
-    if get_task_attr(name, 'state') == b'2':
+    if is_maintained(name):
         raise CoordinationError('Task is already running.')
     heir = task_peek(name)
     if id != task_peek(name) and (not strict and heir is None):
         raise PermissionError(f'{id} is not next in line.')
 
 def validate_task_delete(id, name, strict=False):
-    state, creator = r.hmget(f'task:{name}', ['state', 'creator'])
-    if state is None: raise NotFoundError('Task not found.')
-    if int(state) == 2: raise PermissionError('Task is running.')
+    creator = r.hget(f'task{name}', 'creator')
+    if creator is None: raise NotFoundError('Task not found.')
+    if is_maintained(name): raise PermissionError('Task is running.')
     if creator != id: raise PermissionError(f'{id} is not the creator.')
 
 def validate_task_update(id, name, strict=False):
     if id != get_task_attr(name, 'runner'): raise PermissionError(f'{id} is not the runner.')
     if strict:
         if not r.exists(f'task:{name}'): raise CoordinationError('Task must be running.')
-        if get_task_attr(name, 'state')!=b'2': raise CoordinationError('Task must be running.')
+        if not is_maintained(name): raise CoordinationError('Task must be running.')
 
 def validate_task_stop(id, name, strict=False):
     if id != get_task_attr(name, 'runner'): raise PermissionError(f'{id} is not the runner.')
