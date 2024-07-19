@@ -18,7 +18,6 @@ class Credentials(BaseModel):
 class Task(BaseModel):
     name: str
     description: str
-    status: conint(ge=0, le=2)
     runner: str
     creator: str
     data: str = ''

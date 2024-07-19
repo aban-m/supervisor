@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: Supervisor Server API
   version: "1.0"
@@ -28,10 +28,6 @@ components:
           maximumLength: 40
         description:
           type: string
-        status:
-          type: integer
-          minimum: 0
-          maximum: 2
         runner:
           type: string
         creator:
@@ -65,7 +61,21 @@ paths:
           description: 'OK.'
         '403':
           description: 'User is not running the task.'
-  /task/{name}/start:
+  /task/{name}/run:
+    delete:
+      description: Stop the task
+      requestBody:
+      # the credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: 'OK'
+        '403':
+          description: 'User is not running the task.'
     post:
       description: Run the task.
       requestBody:
