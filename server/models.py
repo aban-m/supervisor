@@ -17,11 +17,11 @@ class Credentials(BaseModel):
 
 class Task(BaseModel):
     name: str
-    description: str
+    desc: Optional[str]
     runner: str
     creator: str
-    data: str = ''
-    last_updated: Optional[datetime] = None
+    data: Optional[str] = ''
+    last_updated: Any
     created_date: datetime
 
 

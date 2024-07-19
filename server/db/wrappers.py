@@ -1,5 +1,5 @@
 import os, dotenv
-from typing import List
+from typing import List, Union
 import redis
 from .helpers import *
 
@@ -44,7 +44,7 @@ def create_task(id, name, desc='', data=''):
         'created_date': current_time()
     })
 
-def maintain_tasks(target : str | List[str], time):
+def maintain_tasks(target: Union[List[str], str], time: int):
     if isinstance(target, str):
         r.setex(f'task_running:{target}', time, 1)
         return
@@ -53,7 +53,7 @@ def maintain_tasks(target : str | List[str], time):
     for t in target:
         pipe.setex(f'task_running:{t}', time, 1)
     pipe.execute()
-def is_maintained(target : str | List[str]):
+def is_maintained(target: Union[List[str], str]):
     if isinstance(target, str): target=[target]
     out = r.exists(*(f'task_running:{t}' for t in target))
     if len(target) == 1: return out[0]
@@ -64,17 +64,20 @@ def delete_task(name):
     r.delete(f'task_queue:{name}')
 
 def get_task(name):
-    d = r.hgetall(f'task:{name}').items()
+    d = r.hgetall(f'task:{name}')
     if not d: return None
-    d['queue'] = task_queue(name)
+    d['name'] = name
+    #d['queue'] = task_queue(name)
     return d
 
 def search_tasks(s, limit):
     names = [out[5:] for out in r.scan(0, f'task:{s}', limit)[1]]
-    tasks = r.mget([f'task:{s}' for s in names])
     queues = r.mget([f'task_queue:{s}' for s in names])
-    for task, queue in zip(tasks, queues):
-        task['queue'] = queue
+    tasks = []
+    for name, queue in zip(names, queues):
+        task = r.hgetall(f'task:{name}')
+        task['name'] = name
+        tasks.append(task)
     return tasks
 
 def task_queue(name):

@@ -30,14 +30,15 @@ def requires_validation(func):
 
 
 @app.get('/task', response_model=List[Task])
-def search_tasks(pattern: Optional[str] = None, limit: Optional[int] = None) -> List[Task]:
-    return wrappers.search_tasks(pattern, limit)
+def search_tasks(pattern: Optional[str] = '*', limit: Optional[int] = 10) -> List[Task]:
+    return [Task(**d) for d in wrappers.search_tasks(pattern, limit)]
 
 
 @app.post('/task', response_model=None)
 @requires_validation
-def create_task(body: TaskPostRequest) -> None:
-    wrappers.create_task(body.credentials.id, body.name, body.desc)
+async def create_task(body: TaskPostRequest) -> None:
+    try: wrappers.create_task(body.credentials.id, body.name, body.desc)
+    except helpers.DuplicationError as e: raise HTTPException(409, str(e))
 
 
 @app.delete('/task/{name}', response_model=None)
@@ -62,7 +63,7 @@ def update_task(body: TaskNamePutRequest = ..., name: str = ...) -> None:
 
 @app.get('/task/{name}', response_model=Task)
 def get_task(name: str) -> Task:
-    return wrappers.get_task(name)
+    return Task(**wrappers.get_task(name))
 
 
 @app.delete('/task/{name}/queue', response_model=None)
