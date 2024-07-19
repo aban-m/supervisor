@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 
 from .models import Credentials, Task, TaskNamePutRequest, TaskPostRequest
 from .db import wrappers, helpers
+from . import daemon
 
 app = FastAPI(
     title='Supervisor Server API',
@@ -93,14 +94,26 @@ def register_user(id: str, link: str = '') -> str:
     return key
 
 @app.post('/task/{name}/maintain', response_model=None)
+@requires_validation
 def maintain_task(name: str) -> None:
     runner = wrappers.get_task_attr(name, 'runner')
     if not runner: raise HTTPException(404, 'Task not found.')
     if runner != name: raise HTTPException(403, 'You are not running the task.')
+    wrappers.maintain_tasks(name, daemon.MAINTAIN_PERIOD)
 
-@app.post('/task/{name}/start', response_model=None)
+@app.post('/task/{name}/run', response_model=None)
+@requires_validation
 def start_task(body : Credentials, name: str) -> None:
     try: wrappers.validate_task_run(body.id, name)
     except helpers.PermissionError as e: raise HTTPException(403, str(e))
     except helpers.LogicError as e: raise HTTPException(500, str(e))
     wrappers.set_task_runner(body.id, name)
+    wrappers.maintain_tasks(name, daemon.MAINTAIN_PERIOD)
+
+@app.delete('/task/{name}/run', response_model=None)
+@requires_validation
+def stop_task(body : Credentials, name: str) -> None:
+    try: wrappers.validate_task_update(body.id, name)
+    except helpers.NotFoundError as e: raise HTTPException(404, str(e))
+    except helpers.PermissionError as e: raise HTTPException(403, str(e))
+    wrappers.stop_task(name)
