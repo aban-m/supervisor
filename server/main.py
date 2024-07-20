@@ -2,17 +2,28 @@ from __future__ import annotations
 
 from typing import List, Optional
 from functools import wraps
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
 from .models import Credentials, Task, TaskNamePutRequest, TaskPostRequest, UserPostRequest
 from .db import wrappers, helpers
-from . import daemon
+from .daemon import chronos
+
+
+
+
+@asynccontextmanager
+async def lifespan(app : FastAPI):
+    # launch daemon on startup
+    await chronos.watch_forever() 
+    yield
 
 app = FastAPI(
     title='Supervisor Server API',
     version='0.0.1',
     description='The server-side of the Supervisor API',
+    lifespan=lifespan
 )
 
 def requires_validation(func):
@@ -95,7 +106,7 @@ def maintain_task(name: str) -> None:
     runner = wrappers.get_task_attr(name, 'runner')
     if not runner: raise HTTPException(404, 'Task not found.')
     if runner != name: raise HTTPException(403, 'You are not running the task.')
-    wrappers.maintain_tasks(name, daemon.MAINTAIN_PERIOD)
+    wrappers.maintain_tasks(name, chronos.MAINTAIN_PERIOD)
 
 @app.post('/task/{name}/run', response_model=None)
 @requires_validation
@@ -105,7 +116,7 @@ def start_task(body : Credentials, name: str) -> None:
     except helpers.LogicError as e: raise HTTPException(500, str(e))
     wrappers.set_task_runner(body.id, name)
     wrappers.task_dequeue(name) 
-    wrappers.maintain_tasks(name, daemon.MAINTAIN_PERIOD)
+    wrappers.maintain_tasks(name, chronos.MAINTAIN_PERIOD)
 
 @app.delete('/task/{name}/run', response_model=None)
 @requires_validation
