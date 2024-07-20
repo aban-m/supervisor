@@ -53,11 +53,15 @@ def maintain_tasks(target: Union[List[str], str], time: int):
     for t in target:
         pipe.setex(f'task_running:{t}', time, 1)
     pipe.execute()
-def is_maintained(target: Union[List[str], str]):
-    if isinstance(target, str): target=[target]
-    out = r.exists(*(f'task_running:{t}' for t in target))
-    if len(target) == 1: return out[0]
+def is_maintained(target: List[str]) -> List[int]:
+    check = [f'task_running:{t}' for t in target]
+    pipe = r.pipeline()
+    for task in check: pipe.exists(task)
+    out = pipe.execute()
     return out
+def get_pending():
+    names = [out[11:] for out in r.keys(f'task_queue:*')]    
+    return [names[ind] for ind in range(len(names)) if not is_maintained(names)[ind]]
 
 def delete_task(name):
     r.delete(f'task:{name}')

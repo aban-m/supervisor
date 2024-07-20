@@ -25,7 +25,7 @@ class TaskNamePutRequest(BaseModel):
     credentials: Credentials
     data: str
 
-class UserPostRequst(BaseModel):
+class UserPostRequest(BaseModel):
     id: str
     link: Optional[str] = ''
 
