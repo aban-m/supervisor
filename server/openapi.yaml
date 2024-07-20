@@ -90,8 +90,8 @@ paths:
           description: 'OK'
         '403':
           description: 'User is not next in line.'
-    
-  /user/{id}:
+  
+  /user:
     post:
       description: Register user and return its key.
       parameters:
@@ -109,6 +109,7 @@ paths:
                 type: string
         '409':
           description: 'User already exists.'
+  /user/{id}:
     get:
       description: Get the link of the user.
       parameters:
