@@ -94,12 +94,20 @@ paths:
   /user:
     post:
       description: Register user and return its key.
-      parameters:
-        - name: id
-          schema:
-            type: string
-          in: path
-          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minimumLength: 4
+                  maximumLength: 40
+                link:
+                  type: string
+                  nullable: true
       responses:
         '200':
           description: 'OK'
