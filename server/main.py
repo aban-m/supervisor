@@ -11,8 +11,6 @@ from .db import wrappers, helpers
 from .daemon import chronos
 
 
-
-
 @asynccontextmanager
 async def lifespan(app : FastAPI):
     # launch daemon on startup

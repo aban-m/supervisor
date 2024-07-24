@@ -20,15 +20,16 @@ config.read(CONFIG_PATH)
 MAINTAIN_PERIOD = int(config['DEFAULT'].get('MAINTAIN_PERIOD', 60))
 DELAY = MAINTAIN_PERIOD/3                                           # NOTE: arbitrary!
 
-async def watch(session : aiohttp.ClientSession):
+async def watch():
     print('Watching...')
     for name in wrappers.get_pending():
         runner = wrappers.get_task_attr(name, 'runner')
         link, key = wrappers.r.hmget(f'user:{runner}', 'link', 'key')
+        link = link.rstrip('/') + '/start'
         if link:
-            async with ClientSession() as session:
-                print('about to make request to', link.rstrip('/')+'/start')
-                await session.post(link.rstrip('/')+'/start',
+            async with aiohttp.ClientSession() as session:
+                logger.info('Making a POST request to %s', link)
+                await session.post(link,
                     json = {
                         'task': name,
                         'key': key
@@ -38,7 +39,7 @@ async def watch(session : aiohttp.ClientSession):
 async def watch_forever():
         while True:
             try:
-                await watch(session)
+                await watch()
             except KeyboardInterrupt:
                 break
             except Exception as e:
