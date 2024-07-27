@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 from functools import wraps
 from contextlib import asynccontextmanager
+import asyncio
 
 from fastapi import FastAPI, HTTPException
 
@@ -14,8 +15,9 @@ from .daemon import chronos
 @asynccontextmanager
 async def lifespan(app : FastAPI):
     # launch daemon on startup
-    await chronos.watch_forever() 
+    asyncio.create_task(chronos.watch_forever())
     yield
+    print('Shutting down...')
 
 app = FastAPI(
     title='Supervisor Server API',
