@@ -26,7 +26,7 @@ async def watch():
         runner = wrappers.get_task_attr(name, 'runner')
         link, key = wrappers.r.hmget(f'user:{runner}', 'link', 'key')
         link = link.rstrip('/') + '/start'
-        if link:
+        if link != '/start':
             async with aiohttp.ClientSession() as session:
                 logger.info('Making a POST request to %s', link)
                 await session.post(link,
@@ -40,10 +40,10 @@ async def watch_forever():
         while True:
             try:
                 await watch()
+                await asyncio.sleep(DELAY)
             except KeyboardInterrupt:
-                break
+                return
             except Exception as e:
                 # log it
                 logger.error(e, exc_info=True)
-            finally:
                 await asyncio.sleep(DELAY)
