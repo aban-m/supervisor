@@ -20,26 +20,36 @@ config.read(CONFIG_PATH)
 MAINTAIN_PERIOD = int(config['DEFAULT'].get('MAINTAIN_PERIOD', 60))
 DELAY = MAINTAIN_PERIOD/3                                           # NOTE: arbitrary!
 
-async def watch():
+async def notify(name):
+    print('Handling task', name)
+    volunteer = wrappers.task_peek(name)
+    link, key = wrappers.r.hmget(f'user:{volunteer}', 'link', 'key')
+    if not link:
+        logger.warning('User %s has not supplied link', volunteer)
+        return
+    print('Link', link)
+    link = link.rstrip('/') + '/start'
+    if link != '/start':
+        async with aiohttp.ClientSession() as session:
+            logger.info('Making a POST request to %s', link)
+            await session.post(link,
+                json = {
+                    'task': name,
+                    'key': key
+                }
+            )
+
+async def notify_pending():
     print('Watching...')
     for name in wrappers.get_pending():
-        runner = wrappers.get_task_attr(name, 'runner')
-        link, key = wrappers.r.hmget(f'user:{runner}', 'link', 'key')
-        link = link.rstrip('/') + '/start'
-        if link != '/start':
-            async with aiohttp.ClientSession() as session:
-                logger.info('Making a POST request to %s', link)
-                await session.post(link,
-                    json = {
-                        'task': name,
-                        'key': key
-                    }
-                )
-
+        try: await notify(name)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            continue
 async def watch_forever():
         while True:
             try:
-                await watch()
+                await notify_pending()
                 await asyncio.sleep(DELAY)
             except KeyboardInterrupt:
                 return
